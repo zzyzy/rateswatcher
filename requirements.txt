@@ -1,0 +1,5 @@
+selenium==3.4.3
+Flask==0.12.2
+firebase_admin==2.1.1
+requests==2.17.3
+lxml==3.7.3
