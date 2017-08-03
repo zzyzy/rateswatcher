@@ -8,14 +8,14 @@ import requests
 from flask import Flask
 from flask import request
 from lxml import html
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 
-with open('config.dev.json') as file:
-    config = json.load(file)
+load_dotenv('.env')
 
-print(config['webhook_token'])
-print(os.getcwd())
+PAGE_ACCESS_TOKEN = os.getenv('PAGE_ACCESS_TOKEN')
+WEBHOOK_TOKEN = os.getenv('WEBHOOK_TOKEN')
 
 
 @app.route('/')
@@ -34,7 +34,7 @@ def index():
 @app.route('/webhook', methods=['GET'])
 def handle_verification():
     """webhook"""
-    if request.args['hub.mode'] == 'subscribe' and request.args['hub.verify_token'] == config['webhook_token']:
+    if request.args['hub.mode'] == 'subscribe' and request.args['hub.verify_token'] == WEBHOOK_TOKEN:
         print('Validating webhook')
         return request.args['hub.challenge'], 200
     else:
@@ -80,7 +80,7 @@ def handle_message():
 def send_message(sender_id, message_body):
     return requests.post('https://graph.facebook.com/v2.6/me/messages',
                          params={
-                             'access_token': config['page_access_token']
+                             'access_token': PAGE_ACCESS_TOKEN
                          },
                          headers={'Content-Type': 'application/json'},
                          data=json.dumps({

@@ -17,39 +17,41 @@ from selenium.webdriver.chrome.options import Options
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
+from dotenv import load_dotenv
 
-# Load local config
-with open('config.dev.json') as file:
-    config = json.load(file)
+# Load env settings
+load_dotenv('.env')
 
-firebase_conf = config['firebase']
-dbs_conf = config['dbs']
+FIREBASE_CRED_FILE = os.getenv('FIREBASE_CRED_FILE')
+FIREBASE_DB_URL = os.getenv('FIREBASE_DB_URL')
+DBS_USER_ID = os.getenv('DBS_USER_ID')
+DBS_PASSWORD = os.getenv('DBS_PASSWORD')
 
 # Initialize Firebase
-cred = credentials.Certificate(firebase_conf['credentials_file'])
+cred = credentials.Certificate(FIREBASE_CRED_FILE)
 default_app = firebase_admin.initialize_app(cred, {
-    'databaseURL': firebase_conf['database_url']
+    'databaseURL': FIREBASE_DB_URL
 })
 
 # Create a new Chrome session
 chrome_options = Options()
 chrome_options.add_argument("--headless")
-chromedriver = config['chromedriver']
+chromedriver = 'bin/chromedriver'
 chromedriver += '.exe' if os.name == 'nt' else ''
 driver = webdriver.Chrome(chromedriver, chrome_options=chrome_options)
 driver.implicitly_wait(30)
 # driver.maximize_window()
 
 # Navigate to the application home page
-driver.get(dbs_conf['url'])
+driver.get('https://internet-banking.dbs.com.sg')
 
 # Login
 input_user_id = driver.find_element_by_xpath('//*[@id="UID"]')
 input_password = driver.find_element_by_xpath('//*[@id="PIN"]')
 button_login = driver.find_element_by_xpath('/html/body/form[1]/div/div[7]/button[1]')
 
-user_id = dbs_conf['user_id']
-password = dbs_conf['password']
+user_id = DBS_USER_ID
+password = DBS_PASSWORD
 
 input_user_id.send_keys(user_id)
 input_password.send_keys(password)

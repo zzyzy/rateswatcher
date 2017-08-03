@@ -2,6 +2,7 @@
 config.dev.json
 rateswatcher-firebase-adminsdk-0ds2y-402ca760cb.json
 rates/*
+.env
 
 # Created by https://www.gitignore.io/api/intellij
 
