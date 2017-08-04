@@ -7,6 +7,7 @@ import time
 import re
 import json
 import datetime
+import base64
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
@@ -26,6 +27,10 @@ FIREBASE_CRED_FILE = os.getenv('FIREBASE_CRED_FILE')
 FIREBASE_DB_URL = os.getenv('FIREBASE_DB_URL')
 DBS_USER_ID = os.getenv('DBS_USER_ID')
 DBS_PASSWORD = os.getenv('DBS_PASSWORD')
+FIREBASE_CRED_DATA = base64.b64decode(os.getenv('FIREBASE_CRED_DATA')).decode('utf-8')
+
+with open(FIREBASE_CRED_FILE, 'w') as file:
+  json.dump(json.loads(FIREBASE_CRED_DATA), file, indent=2)
 
 # Initialize Firebase
 cred = credentials.Certificate(FIREBASE_CRED_FILE)
