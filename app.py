@@ -5,17 +5,33 @@ from datetime import datetime
 import os
 import json
 import requests
+import base64
 from flask import Flask
 from flask import request
 from lxml import html
 from dotenv import load_dotenv
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import db
 
 app = Flask(__name__)
 
 load_dotenv('.env')
 
+FIREBASE_CRED_FILE = os.getenv('FIREBASE_CRED_FILE')
+FIREBASE_DB_URL = os.getenv('FIREBASE_DB_URL')
+FIREBASE_CRED_DATA = base64.b64decode(os.getenv('FIREBASE_CRED_DATA')).decode('utf-8')
 PAGE_ACCESS_TOKEN = os.getenv('PAGE_ACCESS_TOKEN')
 WEBHOOK_TOKEN = os.getenv('WEBHOOK_TOKEN')
+
+with open(FIREBASE_CRED_FILE, 'w') as file:
+  json.dump(json.loads(FIREBASE_CRED_DATA), file, indent=2)
+
+# Initialize Firebase
+cred = credentials.Certificate(FIREBASE_CRED_FILE)
+default_app = firebase_admin.initialize_app(cred, {
+    'databaseURL': FIREBASE_DB_URL
+})
 
 
 @app.route('/')
@@ -58,12 +74,9 @@ def handle_message():
 
                     print(messaging_event)
 
-                    dbs_rates_json = 'rates/dbs/dbs_rates.json'
-                    if os.path.isfile(dbs_rates_json):
-                        with open(dbs_rates_json) as file:
-                            currencies = json.load(file)['SGD']
-                    else:
-                        return 'FILE NOT FOUND', 500
+                    rates_path = 'rates/dbs'
+                    ref = db.reference(f'{rates_path}')
+                    currencies = ref.get()['SGD']
 
                     if 'quick_reply' in message:
                         quick_reply = message['quick_reply']

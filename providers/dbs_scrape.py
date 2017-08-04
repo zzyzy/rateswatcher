@@ -25,9 +25,9 @@ load_dotenv('.env')
 
 FIREBASE_CRED_FILE = os.getenv('FIREBASE_CRED_FILE')
 FIREBASE_DB_URL = os.getenv('FIREBASE_DB_URL')
+FIREBASE_CRED_DATA = base64.b64decode(os.getenv('FIREBASE_CRED_DATA')).decode('utf-8')
 DBS_USER_ID = os.getenv('DBS_USER_ID')
 DBS_PASSWORD = os.getenv('DBS_PASSWORD')
-FIREBASE_CRED_DATA = base64.b64decode(os.getenv('FIREBASE_CRED_DATA')).decode('utf-8')
 
 with open(FIREBASE_CRED_FILE, 'w') as file:
   json.dump(json.loads(FIREBASE_CRED_DATA), file, indent=2)
@@ -136,22 +136,28 @@ for from_currency, pattern_map in patterns.items():
 # Close the browser window
 driver.quit()
 
-# Write rates to json file
-dir_rates = 'rates/dbs'
-os.makedirs(dir_rates, exist_ok=True)
+# Write rates to json file or Firebase
+rates_path = 'rates/dbs'
+history_path = 'history/dbs'
 today = datetime.datetime.now().strftime("%Y%m%d%H%M")
 
-# Keep a historical file for statistical purposes
-with open(f'{dir_rates}/dbs_rates_{today}.json', 'w') as fp:
-    json.dump(rates, fp, indent=2)
-
-# Latest rates
-with open(f'{dir_rates}/dbs_rates.json', 'w') as fp:
-    json.dump(rates, fp, indent=2)
+# os.makedirs(rates_path, exist_ok=True)
+# # Latest rates
+# with open(f'{rates_path}/dbs_rates.json', 'w') as fp:
+#     json.dump(rates, fp, indent=2)
+#
+# # Keep a historical file for statistical purposes
+# with open(f'{rates_path}/dbs_rates_{today}.json', 'w') as fp:
+#     json.dump(rates, fp, indent=2)
 
 for from_currency, currency_map in rates.items():
     for to_currency, rate in currency_map.items():
         print(f'1 {from_currency} is to {rate} {to_currency}')
 
-ref = db.reference('{dir_rates}')
+# Latest rates
+ref = db.reference(f'{rates_path}')
+ref.set(rates)
+
+# Another copy for historical/statiscal purposes
+ref = db.reference(f'{history_path}/{today}')
 ref.set(rates)
