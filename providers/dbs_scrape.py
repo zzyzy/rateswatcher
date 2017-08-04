@@ -28,6 +28,16 @@ FIREBASE_DB_URL = os.getenv('FIREBASE_DB_URL')
 FIREBASE_CRED_DATA = base64.b64decode(os.getenv('FIREBASE_CRED_DATA')).decode('utf-8')
 DBS_USER_ID = os.getenv('DBS_USER_ID')
 DBS_PASSWORD = os.getenv('DBS_PASSWORD')
+SCRAPE_TIME_FROM = os.getenv('SCRAPE_TIME_FROM')
+SCRAPE_TIME_TO = os.getenv('SCRAPE_TIME_TO')
+
+today = datetime.datetime.now()
+scrape_time_from = datetime.datetime.strptime(SCRAPE_TIME_FROM, '%H%M')
+scrape_time_to = datetime.datetime.strptime(SCRAPE_TIME_TO, '%H%M')
+
+if today.time() < scrape_time_from.time() or today.time() > scrape_time_to.time():
+  print('Not in scraping period')
+  quit()
 
 with open(FIREBASE_CRED_FILE, 'w') as file:
   json.dump(json.loads(FIREBASE_CRED_DATA), file, indent=2)
@@ -42,10 +52,10 @@ default_app = firebase_admin.initialize_app(cred, {
 chrome_bin = os.getenv('GOOGLE_CHROME_BIN')
 chrome_options = Options()
 chrome_options.binary_location = chrome_bin
-chrome_options.add_argument("--headless")
-chrome_options.add_argument("--disable-gpu")
-chrome_options.add_argument("--no-sandbox")
-# chrome_options.add_argument("--remote-debugging-port=9222")
+chrome_options.add_argument('--headless')
+chrome_options.add_argument('--disable-gpu')
+chrome_options.add_argument('--no-sandbox')
+# chrome_options.add_argument('--remote-debugging-port=9222')
 chromedriver = 'bin/chromedriver'
 chromedriver += '.exe' if os.name == 'nt' else ''
 driver = webdriver.Chrome(chromedriver, chrome_options=chrome_options)
@@ -101,11 +111,11 @@ button_otp_login.click()
 
 # Patterns to look for
 patterns = {
-    "SGD": {
-        "MYR": r'(\d*.?\d*) SGD (\d*.?\d*) MYR',
-        "AUD": r'(\d*.?\d*) SGD (\d*.?\d*) AUD',
-        "GBP": r'(\d*.?\d*) SGD (\d*.?\d*) GBP',
-        "USD": r'(\d*.?\d*) SGD (\d*.?\d*) USD',
+    'SGD': {
+        'MYR': r'(\d*.?\d*) SGD (\d*.?\d*) MYR',
+        'AUD': r'(\d*.?\d*) SGD (\d*.?\d*) AUD',
+        'GBP': r'(\d*.?\d*) SGD (\d*.?\d*) GBP',
+        'USD': r'(\d*.?\d*) SGD (\d*.?\d*) USD',
     }
 }
 
@@ -139,7 +149,7 @@ driver.quit()
 # Write rates to json file or Firebase
 rates_path = 'rates/dbs'
 history_path = 'history/dbs'
-today = datetime.datetime.now().strftime("%Y%m%d%H%M")
+today_str = today.strftime('%Y%m%d%H%M')
 
 # os.makedirs(rates_path, exist_ok=True)
 # # Latest rates
@@ -159,5 +169,5 @@ ref = db.reference(f'{rates_path}')
 ref.set(rates)
 
 # Another copy for historical/statiscal purposes
-ref = db.reference(f'{history_path}/{today}')
+ref = db.reference(f'{history_path}/{today_str}')
 ref.set(rates)
