@@ -137,19 +137,21 @@ for from_currency, pattern_map in patterns.items():
 driver.quit()
 
 # Write rates to json file
+dir_rates = 'rates/dbs'
+os.makedirs(dir_rates, exist_ok=True)
 today = datetime.datetime.now().strftime("%Y%m%d%H%M")
 
 # Keep a historical file for statistical purposes
-with open(f'rates/dbs/dbs_rates_{today}.json', 'w') as fp:
+with open(f'{dir_rates}/dbs_rates_{today}.json', 'w') as fp:
     json.dump(rates, fp, indent=2)
 
 # Latest rates
-with open(f'rates/dbs/dbs_rates.json', 'w') as fp:
+with open(f'{dir_rates}/dbs_rates.json', 'w') as fp:
     json.dump(rates, fp, indent=2)
 
 for from_currency, currency_map in rates.items():
     for to_currency, rate in currency_map.items():
         print(f'1 {from_currency} is to {rate} {to_currency}')
 
-ref = db.reference('rates/dbs')
+ref = db.reference('{dir_rates}')
 ref.set(rates)
