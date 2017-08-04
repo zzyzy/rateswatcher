@@ -39,7 +39,9 @@ default_app = firebase_admin.initialize_app(cred, {
 })
 
 # Create a new Chrome session
+chrome_bin = os.getenv('GOOGLE_CHROME_SHIM')
 chrome_options = Options()
+chrome_options.binary_location = chrome_bin
 chrome_options.add_argument("--headless")
 chromedriver = 'bin/chromedriver'
 chromedriver += '.exe' if os.name == 'nt' else ''
