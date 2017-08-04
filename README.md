@@ -1,1 +1,1 @@
-# rates-watcher
+# rateswatcher
