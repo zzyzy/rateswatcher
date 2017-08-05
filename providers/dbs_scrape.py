@@ -31,16 +31,19 @@ DBS_PASSWORD = os.getenv('DBS_PASSWORD')
 SCRAPE_TIME_FROM = os.getenv('SCRAPE_TIME_FROM')
 SCRAPE_TIME_TO = os.getenv('SCRAPE_TIME_TO')
 
-today = datetime.datetime.now()
+today = datetime.datetime.utcnow().replace(second=0, microsecond=0)
 scrape_time_from = datetime.datetime.strptime(SCRAPE_TIME_FROM, '%H%M')
 scrape_time_to = datetime.datetime.strptime(SCRAPE_TIME_TO, '%H%M')
 
+NOT_IN_SCAPING_PERIOD = 1
+INVALID_OTP_RECEIVED = 2
+
 if today.time() < scrape_time_from.time() or today.time() > scrape_time_to.time():
-  print('Not in scraping period')
-  quit()
+    print('Not in scraping period')
+    quit(NOT_IN_SCAPING_PERIOD)
 
 with open(FIREBASE_CRED_FILE, 'w') as file:
-  json.dump(json.loads(FIREBASE_CRED_DATA), file, indent=2)
+    json.dump(json.loads(FIREBASE_CRED_DATA), file, indent=2)
 
 # Initialize Firebase
 cred = credentials.Certificate(FIREBASE_CRED_FILE)
@@ -96,17 +99,25 @@ button_get_otp.click()
 
 # OTP will be sent and read by otphelper on user's phone, then updated to Firebase
 ref = db.reference('otp')
-print(ref.get())
+otp = ref.get()
+print(otp)
 
 # Wait for awhile, sms may be slow sometimes
 time.sleep(10)
+
+otp = ref.get()
+print(otp)
+
+otp_date = datetime.datetime.strptime(otp['date'], '%Y%m%d%H%M')
+if otp_date < today:
+    print('Invalid otp. Exiting...')
+    quit(INVALID_OTP_RECEIVED)
 
 # Key in the OTP retrieved from Firebase
 input_otp = WebDriverWait(driver, 10).until(ec.visibility_of_element_located((By.XPATH, '//*[@id="SMSLoginPin"]')))
 button_otp_login = WebDriverWait(driver, 10).until(
     ec.visibility_of_element_located((By.XPATH, '//*[@id="submitButton"]')))
-print(ref.get())
-input_otp.send_keys(ref.get())
+input_otp.send_keys(otp['text'])
 button_otp_login.click()
 
 # Patterns to look for
