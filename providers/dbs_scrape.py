@@ -1,13 +1,29 @@
-"""
-DBS Scraping Script
-"""
+#!/usr/bin/env python3
+#
+#   dbs_scrape (DBS Scraping script)
+#   Written by zzyzy
+#
+#   As MYR is not listed in the DBS forex page, I took it upon myself
+#   to extract the MYR rate from their DBS Remittance and Overseas Transfer
+#   page.
+#
+#   Selenium is used to automate the process:
+#   1.  Login
+#   2.  Navigating to the intended page
+#   3.  As there will be OTP required before actually going into the page,
+#       an otphelper was built in Android to help facilitate this process
+#   4.  When the otp is sent to my phone, it will pass it to Firebase,
+#       and this script will use the otp from Firebase to login
+#   5.  Now that we're in, let the scraping commence
+#
 
 import os
 import time
 import re
 import json
-import datetime
+from datetime import datetime
 import base64
+
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
@@ -15,41 +31,51 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.chrome.options import Options
+
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
+
 from dotenv import load_dotenv
+
+# Some constants
+NOT_IN_SCAPING_PERIOD = 1
+INVALID_OTP_RECEIVED = 2
 
 # Load env settings
 load_dotenv('.env')
 
-FIREBASE_CRED_FILE = os.getenv('FIREBASE_CRED_FILE')
-FIREBASE_DB_URL = os.getenv('FIREBASE_DB_URL')
-FIREBASE_CRED_DATA = base64.b64decode(os.getenv('FIREBASE_CRED_DATA')).decode('utf-8')
-DBS_USER_ID = os.getenv('DBS_USER_ID')
-DBS_PASSWORD = os.getenv('DBS_PASSWORD')
+# Check if it is in scraping period, typically 10AM to 1159PM (SG time)
+# This is to reduce unnecessary runs
+# Note: 1159PM was used instead of 12AM because of difficulty
+#       with comparing midnight times
 SCRAPE_TIME_FROM = os.getenv('SCRAPE_TIME_FROM')
 SCRAPE_TIME_TO = os.getenv('SCRAPE_TIME_TO')
 
-today = datetime.datetime.utcnow().replace(second=0, microsecond=0)
-scrape_time_from = datetime.datetime.strptime(SCRAPE_TIME_FROM, '%H%M')
-scrape_time_to = datetime.datetime.strptime(SCRAPE_TIME_TO, '%H%M')
-
-NOT_IN_SCAPING_PERIOD = 1
-INVALID_OTP_RECEIVED = 2
+today = datetime.utcnow().replace(second=0, microsecond=0)
+scrape_time_from = datetime.strptime(SCRAPE_TIME_FROM, '%H%M')
+scrape_time_to = datetime.strptime(SCRAPE_TIME_TO, '%H%M')
 
 if today.time() < scrape_time_from.time() or today.time() > scrape_time_to.time():
     print('Not in scraping period')
     quit(NOT_IN_SCAPING_PERIOD)
 
+# Initialize Firebase
+FIREBASE_CRED_FILE = os.getenv('FIREBASE_CRED_FILE')
+FIREBASE_DB_URL = os.getenv('FIREBASE_DB_URL')
+FIREBASE_CRED_DATA = base64.b64decode(os.getenv('FIREBASE_CRED_DATA')).decode('utf-8')
+
 with open(FIREBASE_CRED_FILE, 'w') as file:
     json.dump(json.loads(FIREBASE_CRED_DATA), file, indent=2)
 
-# Initialize Firebase
 cred = credentials.Certificate(FIREBASE_CRED_FILE)
 default_app = firebase_admin.initialize_app(cred, {
     'databaseURL': FIREBASE_DB_URL
 })
+
+# Retrieve DBS credentials
+DBS_USER_ID = os.getenv('DBS_USER_ID')
+DBS_PASSWORD = os.getenv('DBS_PASSWORD')
 
 # Create a new Chrome session
 chrome_bin = os.getenv('GOOGLE_CHROME_BIN')
@@ -98,6 +124,7 @@ button_get_otp = WebDriverWait(driver, 10).until(
 button_get_otp.click()
 
 # OTP will be sent and read by otphelper on user's phone, then updated to Firebase
+print(today)
 ref = db.reference('otp')
 otp = ref.get()
 print(otp)
@@ -108,7 +135,10 @@ time.sleep(10)
 otp = ref.get()
 print(otp)
 
-otp_date = datetime.datetime.strptime(otp['date'], '%Y%m%d%H%M')
+# To check if the otp date is valid or not
+# If the otp date is before current date time
+# it means that it is not updated, thus invalid
+otp_date = datetime.strptime(otp['date'], '%Y%m%d%H%M')
 if otp_date < today:
     print('Invalid otp. Exiting...')
     quit(INVALID_OTP_RECEIVED)
@@ -150,9 +180,9 @@ for from_currency, pattern_map in patterns.items():
 
         if match:
             if from_currency not in rates:
-                rates[from_currency] = {to_currency: match.group(2)}
+                rates[from_currency] = {to_currency: float(match.group(2))}
             else:
-                rates[from_currency][to_currency] = match.group(2)
+                rates[from_currency][to_currency] = float(match.group(2))
 
 # Close the browser window
 driver.quit()
@@ -172,13 +202,13 @@ today_str = today.strftime('%Y%m%d%H%M')
 #     json.dump(rates, fp, indent=2)
 
 for from_currency, currency_map in rates.items():
+    # Latest rates
+    ref = db.reference(f'{rates_path}/{from_currency}')
+    ref.set(currency_map)
+
+    # Another copy for historical/statiscal purposes
+    ref = db.reference(f'{history_path}/{today_str}/{from_currency}')
+    ref.set(currency_map)
+
     for to_currency, rate in currency_map.items():
         print(f'1 {from_currency} is to {rate} {to_currency}')
-
-# Latest rates
-ref = db.reference(f'{rates_path}')
-ref.set(rates)
-
-# Another copy for historical/statiscal purposes
-ref = db.reference(f'{history_path}/{today_str}')
-ref.set(rates)
