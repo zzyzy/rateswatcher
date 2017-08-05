@@ -162,16 +162,16 @@ patterns = {
 
 rates = {}
 
-for from_currency, pattern_map in patterns.items():
-    for to_currency, pattern in pattern_map.items():
+for base, pattern_map in patterns.items():
+    for quote, pattern in pattern_map.items():
         # Scroll to bottom to make the buttons visible to be clicked
         driver.execute_script('window.scrollTo(0, document.documentElement.offsetHeight - window.innerHeight);', '')
         # Give sometime to scroll
         time.sleep(0.5)
         button_rate = WebDriverWait(driver, 10).until(
-            ec.visibility_of_element_located((By.XPATH, f'//*[@id="{to_currency}"]')))
+            ec.visibility_of_element_located((By.XPATH, f'//*[@id="{quote}"]')))
         button_rate.click()
-        print(f'Clicked {to_currency}')
+        print(f'Clicked {quote}')
 
         # Click the rate buttons and use regex to capture the rates
         span_rates = WebDriverWait(driver, 10).until(
@@ -179,18 +179,18 @@ for from_currency, pattern_map in patterns.items():
         match = re.match(pattern, span_rates.text)
 
         if match:
-            if from_currency not in rates:
-                rates[from_currency] = {to_currency: float(match.group(2))}
+            if base not in rates:
+                rates[base] = {quote: float(match.group(2))}
             else:
-                rates[from_currency][to_currency] = float(match.group(2))
+                rates[base][quote] = float(match.group(2))
 
 # Close the browser window
 driver.quit()
 
 # Write rates to json file or Firebase
-rates_path = 'rates/dbs'
-history_path = 'history/dbs'
 today_str = today.strftime('%Y%m%d%H%M')
+rates_path = 'rates/dbs'
+history_path = f'history/dbs/{today_str}'
 
 # os.makedirs(rates_path, exist_ok=True)
 # # Latest rates
@@ -201,14 +201,20 @@ today_str = today.strftime('%Y%m%d%H%M')
 # with open(f'{rates_path}/dbs_rates_{today}.json', 'w') as fp:
 #     json.dump(rates, fp, indent=2)
 
-for from_currency, currency_map in rates.items():
-    # Latest rates
-    ref = db.reference(f'{rates_path}/{from_currency}')
-    ref.set(currency_map)
+rates_ref = db.reference(rates_path)
+history_ref = db.reference(history_path)
 
-    # Another copy for historical/statiscal purposes
-    ref = db.reference(f'{history_path}/{today_str}/{from_currency}')
-    ref.set(currency_map)
+for base, quotes in rates.items():
+    base_ref = rates_ref.child(base)
+    history_base_ref = history_ref.child(base)
 
-    for to_currency, rate in currency_map.items():
-        print(f'1 {from_currency} is to {rate} {to_currency}')
+    for quote, rate in quotes.items():
+        # Latest rates
+        quote_ref = base_ref.child(quote)
+        quote_ref.set(rate)
+
+        # Another copy for historical/statiscal purposes
+        quote_ref = history_base_ref.child(quote)
+        quote_ref.set(rate)
+
+        print(f'1 {base} is to {rate} {quote}')
