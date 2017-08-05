@@ -25,7 +25,7 @@ PAGE_ACCESS_TOKEN = os.getenv('PAGE_ACCESS_TOKEN')
 WEBHOOK_TOKEN = os.getenv('WEBHOOK_TOKEN')
 
 with open(FIREBASE_CRED_FILE, 'w') as file:
-  json.dump(json.loads(FIREBASE_CRED_DATA), file, indent=2)
+    json.dump(json.loads(FIREBASE_CRED_DATA), file, indent=2)
 
 # Initialize Firebase
 cred = credentials.Certificate(FIREBASE_CRED_FILE)
@@ -74,9 +74,10 @@ def handle_message():
 
                     print(messaging_event)
 
+                    from_currency = 'SGD'
                     rates_path = 'rates/dbs'
                     ref = db.reference(f'{rates_path}')
-                    currencies = ref.get()['SGD']
+                    currencies = ref.get()[from_currency]
 
                     if 'quick_reply' in message:
                         quick_reply = message['quick_reply']
@@ -84,10 +85,24 @@ def handle_message():
 
                         if payload in currencies:
                             send_which_currency(sender_id, currencies, currencies[payload])
+
+                        if payload == 'All':
+                            send_which_currency(sender_id,
+                                                currencies,
+                                                all_currencies(from_currency, currencies))
                     else:
                         send_which_currency(sender_id, currencies)
 
     return 'OK', 200
+
+
+def all_currencies(from_currency, currencies):
+    response = []
+
+    for to_currency, rate in currencies.items():
+        response.append(f'1 {from_currency} is to {rate} {to_currency}')
+
+    return '\n'.join(response)
 
 
 def send_message(sender_id, message_body):
@@ -125,6 +140,8 @@ def send_which_currency(sender_id, currencies, text=None):
 
     for currency in currencies:
         quick_replies.append(make_quick_reply('text', currency, currency))
+
+    quick_replies.append(make_quick_reply('text', 'All', 'All'))
 
     message_body = {
         'text': text if text is not None else 'Hi, which currency rate would you like to know?',
