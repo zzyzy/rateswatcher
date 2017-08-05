@@ -201,23 +201,18 @@ history_path = f'history/dbs/{today_str}'
 # with open(f'{rates_path}/dbs_rates_{today}.json', 'w') as fp:
 #     json.dump(rates, fp, indent=2)
 
+# Save a copy for historical/statistical purposes
+history_ref = db.reference(history_path)
+history_ref.set(rates)
+
 rates_ref = db.reference(rates_path)
-history_ref = None
+existing_rates = rates_ref.get()
 
 for base, quotes in rates.items():
-    base_ref = rates_ref.child(base)
-
-    # Save a copy for historical/statistical purposes
-    # This condition ensures it only saves one time, to be efficient
-    if history_ref is None:
-        history_ref = db.reference(f'{history_path}/{base}')
-        history_ref.set(quotes)
-
     for quote, rate in quotes.items():
         # Latest rates
-        quote_ref = base_ref.child(quote)
-        quote_ref.set(rate)
+        existing_rates[base][quote] = rate
 
         print(f'1 {base} is to {rate} {quote}')
 
-    history_ref = None
+rates_ref.set(existing_rates)
