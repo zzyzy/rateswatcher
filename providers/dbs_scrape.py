@@ -146,6 +146,7 @@ print(otp)
 otp_date = datetime.strptime(otp['date'], '%Y%m%d%H%M')
 if otp_date < today:
     print('Invalid otp. Exiting...')
+    driver.quit()
     quit(INVALID_OTP_RECEIVED)
 
 # Key in the OTP retrieved from Firebase
