@@ -56,6 +56,12 @@ today = datetime.utcnow().replace(second=0, microsecond=0)
 scrape_time_from = datetime.strptime(SCRAPE_TIME_FROM, '%H%M')
 scrape_time_to = datetime.strptime(SCRAPE_TIME_TO, '%H%M')
 
+print(today.time())
+print(scrape_time_from.time())
+print(scrape_time_to.time())
+print(today.time() < scrape_time_from.time())
+print(today.time() > scrape_time_to.time())
+
 if today.time() < scrape_time_from.time() or today.time() > scrape_time_to.time():
     print('Not in scraping period')
     quit(NOT_IN_SCAPING_PERIOD)
@@ -124,7 +130,6 @@ button_get_otp = WebDriverWait(driver, 10).until(
 button_get_otp.click()
 
 # OTP will be sent and read by otphelper on user's phone, then updated to Firebase
-print(today)
 ref = db.reference('otp')
 otp = ref.get()
 print(otp)
